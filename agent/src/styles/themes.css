@@ -1,0 +1,97 @@
+/* ===================== Theme variants =====================
+   Each theme only overrides the token set defined in theme.css.
+   Every other stylesheet references those tokens via var(--...),
+   so switching [data-theme] reskins the whole app with no other
+   code changes required. */
+
+/* ---- Cyberpunk: magenta/cyan on near-black ---- */
+[data-theme="cyberpunk"] {
+  --bg-void: #07020c;
+  --bg-panel: #120a1c;
+  --bg-panel-raised: #1a0f29;
+  --line-dim: #3a2050;
+  --line-bright: #5c2f7a;
+
+  --phosphor: #ff2bd6;
+  --phosphor-dim: #8a1a73;
+  --phosphor-glow: rgba(255, 43, 214, 0.35);
+
+  --amber: #28e7ff;
+  --amber-glow: rgba(40, 231, 255, 0.35);
+
+  --classified-red: #ff4d6d;
+  --classified-red-glow: rgba(255, 77, 109, 0.35);
+
+  --text-primary: #f1d8ff;
+  --text-dim: #9a72b8;
+  --text-faint: #5b3f73;
+}
+
+/* ---- Matrix: pure green cascade ---- */
+[data-theme="matrix"] {
+  --bg-void: #000400;
+  --bg-panel: #020c02;
+  --bg-panel-raised: #051405;
+  --line-dim: #0e3a0e;
+  --line-bright: #1c641c;
+
+  --phosphor: #21ff5e;
+  --phosphor-dim: #128a35;
+  --phosphor-glow: rgba(33, 255, 94, 0.35);
+
+  --amber: #9bff6b;
+  --amber-glow: rgba(155, 255, 107, 0.3);
+
+  --classified-red: #ff3b3b;
+  --classified-red-glow: rgba(255, 59, 59, 0.35);
+
+  --text-primary: #c8ffd4;
+  --text-dim: #4f9460;
+  --text-faint: #2c5536;
+}
+
+/* ---- Tron: cold blue grid ---- */
+[data-theme="tron"] {
+  --bg-void: #02060c;
+  --bg-panel: #061222;
+  --bg-panel-raised: #0a1c34;
+  --line-dim: #163a5c;
+  --line-bright: #1f5c8c;
+
+  --phosphor: #4fd8ff;
+  --phosphor-dim: #1f7fa3;
+  --phosphor-glow: rgba(79, 216, 255, 0.35);
+
+  --amber: #ff9d2f;
+  --amber-glow: rgba(255, 157, 47, 0.35);
+
+  --classified-red: #ff5c5c;
+  --classified-red-glow: rgba(255, 92, 92, 0.35);
+
+  --text-primary: #d8f3ff;
+  --text-dim: #5e8aa8;
+  --text-faint: #34536b;
+}
+
+/* ---- Amber: 1980s retro terminal ---- */
+[data-theme="amber"] {
+  --bg-void: #0a0602;
+  --bg-panel: #150d04;
+  --bg-panel-raised: #1f1407;
+  --line-dim: #4a3210;
+  --line-bright: #7a531a;
+
+  --phosphor: #ffb020;
+  --phosphor-dim: #a3690f;
+  --phosphor-glow: rgba(255, 176, 32, 0.35);
+
+  --amber: #ff5c2f;
+  --amber-glow: rgba(255, 92, 47, 0.35);
+
+  --classified-red: #ff3b3b;
+  --classified-red-glow: rgba(255, 59, 59, 0.35);
+
+  --text-primary: #ffe6c2;
+  --text-dim: #b3823f;
+  --text-faint: #6b4d26;
+}

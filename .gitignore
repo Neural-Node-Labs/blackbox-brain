@@ -1,0 +1,22 @@
+# Secrets — never commit real environment files
+.env
+.env.*
+!.env.example
+
+# Node
+agent/node_modules/
+agent/dist/
+agent/*.tsbuildinfo
+npm-debug.log*
+
+# Python
+gateway/**/__pycache__/
+gateway/**/*.pyc
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+*.swp
+/.idea/
+/ollama_models/

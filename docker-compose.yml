@@ -1,0 +1,130 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gateway_db}
+      POSTGRES_USER: ${POSTGRES_USER:-gateway_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./gateway/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gateway_user} -d ${POSTGRES_DB:-gateway_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+    # No host port published — only the gateway can reach Postgres.
+
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    # Not published to the host: only the gateway (on the internal
+    # network) can reach Ollama. Publishing 11434 to the host would let
+    # anyone bypass the gateway's auth/rate-limiting entirely and talk
+    # to the model directly.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama serve &
+        sleep 5
+        if ! ollama list | grep -q 'qwen2.5-coder:0.5b'; then
+          echo "Pulling qwen2.5-coder:0.5b..."
+          ollama pull qwen2.5-coder:0.5b
+        fi
+        wait
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    volumes:
+      - type: bind
+        source: ./ollama_models
+        target: /root/.ollama
+    networks:
+      - internal
+
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-gateway_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-gateway_db}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required, e.g. http://localhost:8088}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?SEED_ADMIN_PASSWORD is required}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      TOKEN_TTL_MINUTES: ${TOKEN_TTL_MINUTES:-60}
+      WORKSPACE_ROOT: /data/workspaces
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-20000000}
+      MAX_PROJECT_BYTES: ${MAX_PROJECT_BYTES:-200000000}
+    volumes:
+      - workspaces:/data/workspaces
+    networks:
+      - internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # No host port published — only the console (nginx) reaches the
+    # gateway directly. Browsers never talk to this service.
+
+  console:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+      args:
+        VITE_OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5-coder:0.5b}
+    restart: unless-stopped
+    depends_on:
+      gateway:
+        condition: service_healthy
+    ports:
+      - "${CONSOLE_PORT:-8088}:8081"
+    networks:
+      - internal
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:mode=1777
+      - /var/run:mode=1777
+      - /tmp:mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8081/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  pgdata:
+  workspaces:

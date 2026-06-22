@@ -1,0 +1,181 @@
+/* ===================== Brain workflow diagram ===================== */
+
+.workflow {
+  padding: 18px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.workflow__node {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+  padding-bottom: 22px;
+}
+
+.workflow__node:last-child {
+  padding-bottom: 0;
+}
+
+.workflow__connector {
+  position: absolute;
+  left: 9px;
+  top: 22px;
+  bottom: 0;
+  width: 1px;
+  background: var(--line-dim);
+}
+
+.workflow__node--active .workflow__connector,
+.workflow__node--done .workflow__connector {
+  background: var(--phosphor-dim);
+}
+
+.workflow__bullet {
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  border: var(--border-w) solid var(--line-bright);
+  background: var(--bg-void);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 9px;
+  color: var(--text-faint);
+  z-index: 1;
+  transition: border-color 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.workflow__node--active .workflow__bullet {
+  border-color: var(--amber);
+  color: var(--amber);
+  box-shadow: 0 0 10px var(--amber-glow);
+  animation: bullet-pulse 1.1s ease-in-out infinite;
+}
+
+.workflow__node--done .workflow__bullet {
+  border-color: var(--phosphor);
+  color: var(--phosphor);
+  background: var(--phosphor-dim);
+}
+
+.workflow__node--error .workflow__bullet {
+  border-color: var(--classified-red);
+  color: var(--classified-red);
+  box-shadow: 0 0 10px var(--classified-red-glow);
+}
+
+@keyframes bullet-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 6px var(--amber-glow);
+  }
+  50% {
+    box-shadow: 0 0 14px var(--amber-glow);
+  }
+}
+
+.workflow__label {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  padding-top: 1px;
+  transition: color 0.2s;
+}
+
+.workflow__node--active .workflow__label {
+  color: var(--amber);
+}
+.workflow__node--done .workflow__label {
+  color: var(--phosphor);
+}
+.workflow__node--error .workflow__label {
+  color: var(--classified-red);
+}
+
+.workflow__detail {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+/* ---- swarm lanes ---- */
+
+.swarm-lanes {
+  margin-left: 31px;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.swarm-lane {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  border: var(--border-w) solid var(--line-dim);
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  color: var(--text-dim);
+}
+
+.swarm-lane__status {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--line-bright);
+  flex-shrink: 0;
+}
+
+.swarm-lane--running .swarm-lane__status {
+  background: var(--amber);
+  box-shadow: 0 0 6px var(--amber-glow);
+  animation: pulse-dot 1s ease-in-out infinite;
+}
+.swarm-lane--running {
+  color: var(--amber);
+  border-color: var(--amber);
+}
+
+.swarm-lane--completed .swarm-lane__status {
+  background: var(--phosphor);
+}
+.swarm-lane--completed {
+  color: var(--phosphor-dim);
+  border-color: var(--line-bright);
+}
+
+.swarm-lane__goal {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- footer meta panel ---- */
+
+.workflow-meta {
+  margin-top: auto;
+  padding: 14px 16px;
+  border-top: var(--border-w) solid var(--line-dim);
+  font-size: 10px;
+  color: var(--text-faint);
+  line-height: 1.7;
+  letter-spacing: 0.03em;
+}
+
+.workflow-meta__row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.workflow-meta__row span:last-child {
+  color: var(--text-dim);
+}
