@@ -18,5 +18,8 @@ venv/
 # OS / editor
 .DS_Store
 *.swp
+
+# SSH config — targets.json has no secrets but known_hosts is host-specific
+ssh/known_hosts
 /.idea/
 /ollama_models/

@@ -6,6 +6,8 @@ import "./styles/console.css";
 import "./styles/workflow.css";
 import "./styles/workspace.css";
 import "./styles/telemetry.css";
+import "./styles/ssh.css";
+import "./styles/osiris.css";
 
 import { LoginScreen } from "./components/LoginScreen";
 import { ConsoleHeader } from "./components/ConsoleHeader";
@@ -14,11 +16,13 @@ import { InputBar } from "./components/InputBar";
 import { BrainWorkflow } from "./components/BrainWorkflow";
 import { WorkspacePanel } from "./components/WorkspacePanel";
 import { TelemetryPanel } from "./components/TelemetryPanel";
+import { SSHPanel } from "./components/SSHPanel";
+import { OsirisPanel } from "./components/OsirisPanel";
 import { streamChat } from "./api/gatewayClient";
 import { uploadFile } from "./api/workspaceClient";
 import { classifyIntent, deriveSwarmGoals } from "./lib/classify";
 import { QWEN_CODER_SYSTEM_PROMPT, TASK_MODE_TELEMETRY_ADDENDUM } from "./lib/systemPrompt";
-import { parseFileBlocks, parseTelemetry } from "./lib/telemetry";
+import { parseFileBlocks, parseTelemetry, buildObservableEvent, extractPostHoc } from "./lib/telemetry";
 import type {
   ChatMessage,
   GatewaySession,
@@ -70,7 +74,7 @@ export default function App() {
   const [intent, setIntent] = useState<"chat" | "task" | null>(null);
   const [swarmTasks, setSwarmTasks] = useState<SwarmTask[]>([]);
   const [busy, setBusy] = useState(false);
-  const [sideTab, setSideTab] = useState<"workflow" | "workspace" | "telemetry">("workflow");
+  const [sideTab, setSideTab] = useState<"workflow" | "telemetry" | "workspace" | "ssh" | "osiris">("workflow");
   const [theme, setTheme] = useState<ThemeId>(loadStoredTheme);
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryEvent[]>([]);
@@ -112,46 +116,88 @@ export default function App() {
     }
   }, []);
 
-  /** After a turn finishes streaming: parse telemetry + any path-tagged
-   * file blocks, append telemetry to the log, and auto-save tagged files
-   * into the active project (if one is selected). Best-effort throughout
-   * — a non-compliant model response just yields nothing to do here. */
+  /** After a turn finishes streaming: run all three telemetry layers, then
+   * auto-save any path-tagged file blocks to the active workspace project. */
   const handleAssistantComplete = useCallback(
-    async (messageId: string, content: string) => {
-      const events = parseTelemetry(messageId, content);
-      if (events.length > 0) {
-        setTelemetry((prev) => [...prev, ...events]);
-        // Reflect model-reported actions onto the swarm lane display when
-        // available, instead of only the synthetic goal text.
-        const actionGoals = events
-          .filter((e) => e.kind === "action" && e.action)
-          .map((e) => `${e.action!.taskId}: ${e.action!.command || e.action!.reason}`);
-        if (actionGoals.length > 0) {
-          setSwarmTasks((prev) =>
-            prev.length === actionGoals.length
-              ? prev.map((t, i) => ({ ...t, goal: actionGoals[i] }))
-              : prev,
-          );
-        }
-      }
+    async (
+      messageId: string,
+      content: string,
+      opts: {
+        classification: "chat" | "task";
+        durationMs: number;
+        errorOccurred: boolean;
+      },
+    ) => {
+      const { classification, durationMs, errorOccurred } = opts;
+      const allEvents: TelemetryEvent[] = [];
 
-      if (!session || !activeProject) return;
+      // ── Layer 1: inline parse (best-effort, often empty at 0.5B) ──
+      const inlineEvents = parseTelemetry(messageId, content);
+      allEvents.push(...inlineEvents);
+
+      // ── Layer 2: observable metrics (always works) ──
       const fileBlocks = parseFileBlocks(content).filter((f) => isSafeRelativePath(f.path));
-      if (fileBlocks.length === 0) return;
+      const filesDetected = fileBlocks.map((f) => f.path);
+      const filesSaved: string[] = [];
 
-      const saved: string[] = [];
-      for (const block of fileBlocks) {
-        try {
-          const file = new File([block.content], block.path.split("/").pop() || "file.txt");
-          await uploadFile(session.token, activeProject, file, block.path);
-          saved.push(block.path);
-        } catch {
-          // Best-effort: surface nothing fatal, just skip this file.
+      if (session && activeProject && fileBlocks.length > 0) {
+        for (const block of fileBlocks) {
+          try {
+            const file = new File([block.content], block.path.split("/").pop() || "file.txt");
+            await uploadFile(session.token, activeProject, file, block.path);
+            filesSaved.push(block.path);
+          } catch { /* best-effort */ }
+        }
+        if (filesSaved.length > 0) {
+          setAutosaveNotice(`Saved to ${activeProject}: ${filesSaved.join(", ")}`);
+          setTimeout(() => setAutosaveNotice(null), 5000);
         }
       }
-      if (saved.length > 0) {
-        setAutosaveNotice(`Saved to ${activeProject}: ${saved.join(", ")}`);
-        setTimeout(() => setAutosaveNotice(null), 5000);
+
+      const observableEvent = buildObservableEvent(messageId, {
+        classification,
+        durationMs,
+        tokenEstimate: Math.round(content.length / 4),
+        filesDetected,
+        filesSaved,
+        errorOccurred,
+      });
+      allEvents.push(observableEvent);
+      setTelemetry((prev) => [...prev, ...allEvents]);
+
+      // Reflect any inline action goals onto the swarm lane display
+      const actionGoals = inlineEvents
+        .filter((e) => e.kind === "action" && e.action)
+        .map((e) => `${e.action!.taskId}: ${e.action!.command || e.action!.reason}`);
+      if (actionGoals.length > 0) {
+        setSwarmTasks((prev) =>
+          prev.length === actionGoals.length
+            ? prev.map((t, i) => ({ ...t, goal: actionGoals[i] }))
+            : prev,
+        );
+      }
+
+      // ── Layer 3: post-hoc extraction (background, task turns only) ──
+      // Only fires when inline parse found nothing, to avoid duplication.
+      if (classification === "task" && inlineEvents.length === 0 && session && content.trim()) {
+        extractPostHoc(session.token, MODEL, messageId, content)
+          .then((extracted) => {
+            if (extracted.length > 0) {
+              setTelemetry((prev) => [...prev, ...extracted]);
+              // Update swarm lanes with real extracted actions
+              const extractedGoals = extracted
+                .filter((e) => e.kind === "action" && e.action)
+                .map((e) => `${e.action!.taskId}: ${e.action!.command || e.action!.reason}`);
+              if (extractedGoals.length > 0) {
+                setSwarmTasks((prev) =>
+                  prev.map((t, i) =>
+                    extractedGoals[i] ? { ...t, goal: extractedGoals[i] } : t,
+                  ),
+                );
+              }
+            }
+          })
+          .catch(() => { /* silent — post-hoc is best-effort */ });
       }
     },
     [session, activeProject],
@@ -211,6 +257,8 @@ export default function App() {
       ];
 
       let finalContent = "";
+      let errorOccurred = false;
+      const sendTime = Date.now();
 
       const network = streamChat(
         session.token,
@@ -229,10 +277,8 @@ export default function App() {
             );
           },
           onError: (message) => {
+            errorOccurred = true;
             setMessages((prev) => [
-              // Drop the empty/partial assistant message — it was never
-              // completed and leaving it causes a blank bubble in the UI
-              // as well as a ghost "" entry in the next request's history.
               ...prev.filter((m) => m.id !== assistantId),
               {
                 id: nextId(),
@@ -248,9 +294,11 @@ export default function App() {
 
       await Promise.all([animation, network]);
 
-      if (finalContent) {
-        await handleAssistantComplete(assistantId, finalContent);
-      }
+      await handleAssistantComplete(assistantId, finalContent, {
+        classification: detectedIntent,
+        durationMs: Date.now() - sendTime,
+        errorOccurred,
+      });
 
       setStage((prev) => (prev === "error" ? prev : "done"));
       setBusy(false);
@@ -299,24 +347,11 @@ export default function App() {
         </section>
         <aside className="panel panel--side">
           <div className="panel-tabs">
-            <button
-              className={`panel-tab ${sideTab === "workflow" ? "panel-tab--active" : ""}`}
-              onClick={() => setSideTab("workflow")}
-            >
-              WORKFLOW
-            </button>
-            <button
-              className={`panel-tab ${sideTab === "telemetry" ? "panel-tab--active" : ""}`}
-              onClick={() => setSideTab("telemetry")}
-            >
-              TELEMETRY
-            </button>
-            <button
-              className={`panel-tab ${sideTab === "workspace" ? "panel-tab--active" : ""}`}
-              onClick={() => setSideTab("workspace")}
-            >
-              WORKSPACE
-            </button>
+            <button className={`panel-tab ${sideTab === "workflow" ? "panel-tab--active" : ""}`} onClick={() => setSideTab("workflow")}>WORKFLOW</button>
+            <button className={`panel-tab ${sideTab === "telemetry" ? "panel-tab--active" : ""}`} onClick={() => setSideTab("telemetry")}>TELEMETRY</button>
+            <button className={`panel-tab ${sideTab === "workspace" ? "panel-tab--active" : ""}`} onClick={() => setSideTab("workspace")}>WORKSPACE</button>
+            <button className={`panel-tab ${sideTab === "osiris" ? "panel-tab--active" : ""}`} onClick={() => setSideTab("osiris")}>OSIRIS</button>
+            <button className={`panel-tab ${sideTab === "ssh" ? "panel-tab--active" : ""}`} onClick={() => setSideTab("ssh")}>SSH</button>
           </div>
 
           {sideTab === "workflow" && (
@@ -348,6 +383,9 @@ export default function App() {
               onActiveProjectChange={setActiveProject}
             />
           )}
+
+          {sideTab === "ssh" && <SSHPanel token={session.token} />}
+          {sideTab === "osiris" && <OsirisPanel token={session.token} />}
         </aside>
       </div>
     </div>

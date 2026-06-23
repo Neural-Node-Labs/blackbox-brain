@@ -69,8 +69,14 @@ services:
       WORKSPACE_ROOT: /data/workspaces
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-20000000}
       MAX_PROJECT_BYTES: ${MAX_PROJECT_BYTES:-200000000}
+      # SSH remote execution (optional — omit SSH_TARGETS_FILE to disable)
+      SSH_TARGETS_FILE: /data/ssh/targets.json
+      SSH_KNOWN_HOSTS_FILE: /data/ssh/known_hosts
+      SSH_COMMAND_TIMEOUT: ${SSH_COMMAND_TIMEOUT:-60}
+      SSH_MAX_OUTPUT_BYTES: ${SSH_MAX_OUTPUT_BYTES:-51200}
     volumes:
       - workspaces:/data/workspaces
+      - ./ssh:/data/ssh   # edit ssh/targets.json on the host; restart gateway to pick up changes
     networks:
       - internal
     extra_hosts:
@@ -96,7 +102,7 @@ services:
       context: ./agent
       dockerfile: Dockerfile
       args:
-        VITE_OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5-coder:0.5b}
+        VITE_OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen2.5-coder:0.5b}"
     restart: unless-stopped
     depends_on:
       gateway:

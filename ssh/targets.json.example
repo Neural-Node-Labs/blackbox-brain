@@ -1,0 +1,35 @@
+[
+  {
+    "id": "web-01",
+    "label": "Web Server 01",
+    "host": "192.168.1.10",
+    "port": 22,
+    "user": "ubuntu",
+    "auth": "password",
+    "password_env": "SSH_WEB01_PASSWORD",
+    "strict_host_checking": false,
+    "tags": ["web", "production"]
+  },
+  {
+    "id": "db-01",
+    "label": "Database Server",
+    "host": "10.0.0.5",
+    "port": 22,
+    "user": "admin",
+    "auth": "key",
+    "key_env": "SSH_DB01_KEY",
+    "strict_host_checking": false,
+    "tags": ["db", "production"]
+  },
+  {
+    "id": "app-container",
+    "label": "App Container (Docker SSH)",
+    "host": "172.17.0.2",
+    "port": 2222,
+    "user": "root",
+    "auth": "password",
+    "password_env": "SSH_APP_CONTAINER_PASSWORD",
+    "strict_host_checking": false,
+    "tags": ["container", "staging"]
+  }
+]

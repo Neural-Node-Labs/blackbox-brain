@@ -1,3 +1,5 @@
+/* ===================== Telemetry Panel ===================== */
+
 .telemetry {
   flex: 1;
   overflow-y: auto;
@@ -17,30 +19,86 @@
   max-width: 260px;
 }
 
-.telemetry__disclaimer {
-  font-size: 9.5px;
-  color: var(--amber);
-  border: var(--border-w) solid var(--amber);
-  background: rgba(255, 176, 32, 0.06);
-  padding: 7px 9px;
-  border-radius: var(--radius);
-  letter-spacing: 0.03em;
-  line-height: 1.5;
-  flex-shrink: 0;
-}
-
-.telemetry__entry {
+/* ---- turn block ---- */
+.telemetry__turn {
   border: var(--border-w) solid var(--line-dim);
   border-radius: var(--radius);
-  padding: 9px 10px;
-  font-size: 11px;
+  overflow: hidden;
 }
 
-.telemetry__entry--plan {
-  border-left: 2px solid var(--phosphor-dim);
+/* ---- observable summary row (always present) ---- */
+.telemetry__observable {
+  background: var(--bg-panel-raised);
+  padding: 8px 10px;
+  border-bottom: var(--border-w) solid var(--line-dim);
 }
-.telemetry__entry--action {
-  border-left: 2px solid var(--amber);
+
+.telemetry__obs-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.telemetry__class-badge {
+  font-family: var(--font-display);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border-radius: var(--radius);
+  border: var(--border-w) solid currentColor;
+}
+.telemetry__class-badge--chat { color: var(--text-dim); }
+.telemetry__class-badge--task { color: var(--phosphor); }
+
+.telemetry__obs-stat {
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+.telemetry__time {
+  margin-left: auto;
+  color: var(--text-faint);
+  font-size: 9.5px;
+}
+
+.telemetry__obs-error {
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--classified-red);
+}
+
+.telemetry__files {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.telemetry__file {
+  font-size: 10px;
+  color: var(--text-dim);
+  background: var(--bg-void);
+  border: var(--border-w) solid var(--line-dim);
+  padding: 2px 6px;
+  border-radius: var(--radius);
+}
+.telemetry__file--saved {
+  color: var(--phosphor);
+  border-color: var(--phosphor-dim);
+}
+
+/* ---- plan / action entries ---- */
+.telemetry__entry {
+  font-size: 11px;
+  padding: 8px 10px;
+  border-top: var(--border-w) solid var(--line-dim);
+}
+.telemetry__entry--plan  { border-left: 2px solid var(--phosphor-dim); }
+.telemetry__entry--action { border-left: 2px solid var(--amber); }
+
+.telemetry__actions {
+  display: flex;
+  flex-direction: column;
 }
 
 .telemetry__entry-header {
@@ -56,25 +114,22 @@
   letter-spacing: 0.1em;
   padding: 2px 6px;
   border-radius: var(--radius);
+  border: var(--border-w) solid currentColor;
 }
-.telemetry__badge--plan {
-  color: var(--phosphor);
-  border: var(--border-w) solid var(--phosphor-dim);
-}
-.telemetry__badge--action {
-  color: var(--amber);
-  border: var(--border-w) solid var(--amber);
-}
+.telemetry__badge--plan   { color: var(--phosphor); }
+.telemetry__badge--action { color: var(--amber); }
 
 .telemetry__task-id {
   color: var(--text-dim);
   font-size: 10px;
 }
 
-.telemetry__time {
+.telemetry__source {
   margin-left: auto;
+  font-size: 9px;
   color: var(--text-faint);
-  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  font-style: italic;
 }
 
 .telemetry__plan-list {
@@ -82,6 +137,7 @@
   padding-left: 18px;
   color: var(--text-primary);
   line-height: 1.6;
+  font-size: 11px;
 }
 
 .telemetry__field {
@@ -89,7 +145,6 @@
   color: var(--text-primary);
   line-height: 1.5;
 }
-
 .telemetry__field-label {
   display: block;
   color: var(--text-faint);
@@ -97,9 +152,18 @@
   letter-spacing: 0.1em;
   margin-bottom: 1px;
 }
-
 .telemetry__field--command {
   font-family: var(--font-body);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ---- pending extraction notice ---- */
+.telemetry__pending {
+  padding: 8px 10px;
+  font-size: 10px;
+  color: var(--text-faint);
+  font-style: italic;
+  border-top: var(--border-w) solid var(--line-dim);
+  animation: pulse-dot 2s ease-in-out infinite;
 }
